@@ -509,11 +509,11 @@ const CELL_CENTERS = [
 
 const HOUSE_DOOR_SIDE = [
   'bottom', // 1
-  'bottom', // 2
+  'right',  // 2 - door on east/right side
   'bottom', // 3
-  'top',    // 4 - red rect near top in sketch
+  'bottom', // 4 - door on south/bottom side
   'top',    // 5
-  'top',    // 6  - based on sketch
+  'bottom', // 6 - door on south/bottom side
   'right',  // 7 - red rect on right side
   'top',    // 8
   'left',   // 9 - red rect on left side
@@ -581,17 +581,17 @@ const HOUSE_ROAD_NODE = [
   'H2M', // 8 → exits top onto HROAD2 middle
   'H2R', // 9 → exits left, onto HROAD2 right
 ];
-// Override: house 4 exits top → goes up to HROAD1 left
+// Road access nodes updated to match corrected door sides
 const HOUSE_ROAD_NODE_CORRECTED = [
-  'H1L', // 1
-  'H1M', // 2
-  'H1R', // 3
-  'H1L', // 4 (door top → HROAD1 left)  wait col0 row1, door top → y goes up to 160
-  'H1M', // 5 (door top → HROAD1 middle)
-  'H1R', // 6
-  'H2L', // 7 (door right → goes to road then H2L area)
-  'H2M', // 8
-  'H2R', // 9
+  'H1L', // 1  (door bottom → HROAD1 left segment)
+  'V2T', // 2  (door right/east → exits right onto VROAD2 top → I2)
+  'H1R', // 3  (door bottom → HROAD1 right)
+  'H2L', // 4  (door bottom/south → HROAD2 left segment)
+  'H1M', // 5  (door top → HROAD1 middle)
+  'H2R', // 6  (door bottom/south → HROAD2 right segment)
+  'H2L', // 7  (door right → HROAD2 left)
+  'H2M', // 8  (door top → HROAD2 middle)
+  'V2B', // 9  (door left/west → exits left onto VROAD2 bottom → I4)
 ];
 
 // =============================================
@@ -619,10 +619,12 @@ const GRAPH = {
   H2L: ['I3'],
   H2M: ['I3','I4'],
   H2R: ['I4'],
+  V2T: ['I2'],
+  V2B: ['I4'],
   I1:  ['H1L','H1M','I2','I3'],
-  I2:  ['H1M','H1R','I1','I4'],
+  I2:  ['H1M','H1R','I1','I4','V2T'],
   I3:  ['H2L','H2M','I1','I4'],
-  I4:  ['H2M','H2R','I2','I3'],
+  I4:  ['H2M','H2R','I2','I3','V2B'],
 };
 
 // BFS to find shortest path through road nodes
@@ -845,7 +847,7 @@ function drawHouses() {
       case 'bottom': dx2=cx-14; dy2=cy+24; dw=28; dh=10; break;
       case 'top':    dx2=cx-14; dy2=cy-34; dw=28; dh=10; break;
       case 'left':   dx2=cx-38; dy2=cy-5;  dw=10; dh=20; break;
-      case 'right':  dx2=cx+28; dy2=cy-5;  dw=10; dh=20; break;
+      case 'right':  dx2=cx+28; dy2=cy-10; dw=10; dh=20; break;
     }
     const door_rect = createSVGEl('rect', {
       x:dx2, y:dy2, width:dw, height:dh,
