@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neighborhood GPS</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0d1526;
+    --border: #1a3a5c;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --green: #39ff14;
+    --yellow: #ffd700;
+    --red: #ff3b3b;
+    --text: #c8e6f5;
+    --dim: #4a7a9b;
+    --road: #1c2a3a;
+    --road-line: #2a4060;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(0,100,180,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,212,255,0.05) 0%, transparent 50%);
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+
+  .subtitle {
+    color: var(--dim);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .main-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  /* MAP */
+  .map-container {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 0 30px rgba(0,212,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+    position: relative;
+  }
+
+  .map-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  #map-svg {
+    display: block;
+  }
+
+  /* PANEL */
+  .control-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    width: 340px;
+    box-shadow: 0 0 30px rgba(0,212,255,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.58rem;
+    color: var(--accent);
+    letter-spacing: 3px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+
+  .selector-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .selector-row label {
+    font-size: 0.72rem;
+    color: var(--dim);
+    width: 50px;
+    flex-shrink: 0;
+  }
+
+  select {
+    flex: 1;
+    background: #0a1520;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    padding: 7px 10px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  button {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    padding: 10px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+
+  button:hover {
+    background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 15px rgba(0,212,255,0.3);
+  }
+
+  button:active { transform: scale(0.98); }
+
+  /* ROUTE DISPLAY */
+  #route-display {
+    background: #070d18;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    min-height: 80px;
+    font-size: 0.72rem;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+
+  #route-display.has-route { color: var(--text); }
+
+  /* STEPS */
+  .steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .steps-container::-webkit-scrollbar { width: 4px; }
+  .steps-container::-webkit-scrollbar-track { background: var(--road); }
+  .steps-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+
+  .step.active {
+    background: rgba(0,212,255,0.08);
+    border-color: var(--accent);
+  }
+
+  .step.done {
+    opacity: 0.4;
+  }
+
+  .step-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+  }
+
+  .step-text {
+    font-size: 0.7rem;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .step-text strong {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  .step.active .step-text strong { color: var(--yellow); }
+
+  /* NAV BUTTONS */
+  .nav-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .nav-buttons button {
+    flex: 1;
+    font-size: 0.6rem;
+    padding: 8px;
+  }
+
+  #btn-prev { border-color: var(--dim); color: var(--dim); }
+  #btn-prev:hover { background: rgba(74,122,155,0.1); box-shadow: none; }
+  #btn-next { border-color: var(--green); color: var(--green); }
+  #btn-next:hover { background: rgba(57,255,20,0.08); box-shadow: 0 0 10px rgba(57,255,20,0.2); }
+
+  .distance-badge {
+    display: inline-block;
+    background: rgba(255,107,53,0.15);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.62rem;
+    color: var(--dim);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
+  /* Animations */
+  @keyframes pulse-path {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .path-animated { animation: pulse-path 1.5s ease-in-out infinite; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+</style>
+</head>
+<body>
+
+<h1>NEIGHBORHOOD GPS</h1>
+<p class="subtitle">LINKED LIST PATHFINDING SYSTEM · 9 HOUSES</p>
+
+<div class="main-layout">
+
+  <!-- MAP -->
+  <div class="map-container">
+    <div class="map-label">◈ NEIGHBORHOOD MAP</div>
+    <svg id="map-svg" width="480" height="480" viewBox="0 0 480 480" xmlns="http://www.w3.org/2000/svg">
+      <!-- Road grid background -->
+      <!-- Horizontal roads -->
+      <rect x="0" y="0" width="480" height="480" fill="#0a0e1a"/>
+      <!-- Road H1 -->
+      <rect x="0" y="138" width="480" height="44" fill="#12202e"/>
+      <!-- Road H2 -->
+      <rect x="0" y="278" width="480" height="44" fill="#12202e"/>
+      <!-- Road V1 -->
+      <rect x="138" y="0" width="44" height="480" fill="#12202e"/>
+      <!-- Road V2 -->
+      <rect x="298" y="0" width="44" height="480" fill="#12202e"/>
+
+      <!-- Road center dashes H1 -->
+      <line x1="0" y1="160" x2="130" y2="160" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="190" y1="160" x2="290" y2="160" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="350" y1="160" x2="480" y2="160" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <!-- Road center dashes H2 -->
+      <line x1="0" y1="300" x2="130" y2="300" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="190" y1="300" x2="290" y2="300" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="350" y1="300" x2="480" y2="300" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <!-- Road center dashes V1 -->
+      <line x1="160" y1="0" x2="160" y2="130" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="160" y1="190" x2="160" y2="270" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="160" y1="330" x2="160" y2="480" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <!-- Road center dashes V2 -->
+      <line x1="320" y1="0" x2="320" y2="130" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="320" y1="190" x2="320" y2="270" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+      <line x1="320" y1="330" x2="320" y2="480" stroke="#2a4060" stroke-width="2" stroke-dasharray="12,8"/>
+
+      <!-- Path overlay (drawn dynamically) -->
+      <g id="path-layer"></g>
+      <!-- Active step highlight -->
+      <g id="step-highlight"></g>
+
+      <!-- Houses will be rendered by JS -->
+      <g id="houses-layer"></g>
+
+      <!-- Compass -->
+      <g transform="translate(440,440)">
+        <circle cx="0" cy="0" r="22" fill="#0d1526" stroke="#1a3a5c" stroke-width="1"/>
+        <text x="0" y="-9" text-anchor="middle" fill="#4a7a9b" font-size="8" font-family="Share Tech Mono">N</text>
+        <text x="0" y="14" text-anchor="middle" fill="#4a7a9b" font-size="8" font-family="Share Tech Mono">S</text>
+        <text x="-13" y="4" text-anchor="middle" fill="#4a7a9b" font-size="8" font-family="Share Tech Mono">W</text>
+        <text x="13" y="4" text-anchor="middle" fill="#4a7a9b" font-size="8" font-family="Share Tech Mono">E</text>
+        <line x1="0" y1="-16" x2="0" y2="-4" stroke="#00d4ff" stroke-width="1.5"/>
+        <line x1="0" y1="4" x2="0" y2="16" stroke="#4a7a9b" stroke-width="1"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- CONTROL PANEL -->
+  <div class="control-panel">
+
+    <div>
+      <div class="panel-section-title">◈ ROUTE PLANNER</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="selector-row">
+          <label>FROM</label>
+          <select id="sel-from">
+            <option value="">— SELECT —</option>
+            <option value="1">House 1</option>
+            <option value="2">House 2</option>
+            <option value="3">House 3</option>
+            <option value="4">House 4</option>
+            <option value="5">House 5</option>
+            <option value="6">House 6</option>
+            <option value="7">House 7</option>
+            <option value="8">House 8</option>
+            <option value="9">House 9</option>
+          </select>
+        </div>
+        <div class="selector-row">
+          <label>TO</label>
+          <select id="sel-to">
+            <option value="">— SELECT —</option>
+            <option value="1">House 1</option>
+            <option value="2">House 2</option>
+            <option value="3">House 3</option>
+            <option value="4">House 4</option>
+            <option value="5">House 5</option>
+            <option value="6">House 6</option>
+            <option value="7">House 7</option>
+            <option value="8">House 8</option>
+            <option value="9">House 9</option>
+          </select>
+        </div>
+        <button id="btn-navigate" onclick="startNavigation()">▶ CALCULATE ROUTE</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">◈ ROUTE INFO</div>
+      <div id="route-display">Select origin and destination to begin navigation...</div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">◈ TURN-BY-TURN DIRECTIONS</div>
+      <div class="steps-container" id="steps-container">
+        <div style="color:#2a4060;font-size:0.7rem;padding:8px;">Awaiting route calculation...</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">◈ STEP NAVIGATOR</div>
+      <div class="nav-buttons">
+        <button id="btn-prev" onclick="prevStep()">◀ PREV</button>
+        <button id="btn-next" onclick="nextStep()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">◈ LEGEND</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#ffd700;border:1px solid #ffd700"></div>House</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff3b3b;border:1px solid #ff3b3b"></div>Door</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#00d4ff;border:1px solid #00d4ff"></div>Route</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#39ff14;border:1px solid #39ff14"></div>Active Step</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// =============================================
+// LINKED LIST IMPLEMENTATION
+// =============================================
+
+class Node {
+  constructor(data) {
+    this.data = data;
+    this.next = null;
+  }
+}
+
+class LinkedList {
+  constructor() {
+    this.head = null;
+    this.size = 0;
+  }
+
+  append(data) {
+    const node = new Node(data);
+    if (!this.head) {
+      this.head = node;
+    } else {
+      let curr = this.head;
+      while (curr.next) curr = curr.next;
+      curr.next = node;
+    }
+    this.size++;
+  }
+
+  toArray() {
+    const arr = [];
+    let curr = this.head;
+    while (curr) {
+      arr.push(curr.data);
+      curr = curr.next;
+    }
+    return arr;
+  }
+
+  clear() {
+    this.head = null;
+    this.size = 0;
+  }
+}
+
+// =============================================
+// HOUSE LAYOUT
+// Layout (3x3 grid):
+//  1 | 2 | 3     row=0
+//  4 | 5 | 6     row=1
+//  7 | 8 | 9     row=2
+//
+// Each house has:
+//   cx, cy  = center of the house block
+//   door    = which side the door is on: 'bottom','top','left','right'
+//             (this represents where you exit/enter the house from)
+// =============================================
+
+// Grid: cell centers (matching the SVG road layout)
+// Cells: col 0 = x 69, col 1 = x 229, col 2 = x 389
+//        row 0 = y 69, row 1 = y 209, row 2 = y 389 (adjusted for roads at 138-182, 278-322)
+
+const CELL_CENTERS = [
+  { col: 0, cx: 69,  cy: 69  }, // house 1
+  { col: 1, cx: 229, cy: 69  }, // house 2
+  { col: 2, cx: 389, cy: 69  }, // house 3
+  { col: 0, cx: 69,  cy: 229 }, // house 4
+  { col: 1, cx: 229, cy: 229 }, // house 5
+  { col: 2, cx: 389, cy: 229 }, // house 6
+  { col: 0, cx: 69,  cy: 389 }, // house 7
+  { col: 1, cx: 229, cy: 389 }, // house 8
+  { col: 2, cx: 389, cy: 389 }, // house 9
+];
+
+// Door positions based on sketch observation:
+// Houses 1,2,3: door at bottom (exits onto H-road 1)
+// Houses 4,5,6: door at bottom (exits onto H-road 2); also top accessible from H-road 1
+// Houses 7,8,9: door at top (exits onto H-road 2) - based on sketch red rect at top
+// Let's define door side and exact coordinates:
+
+const HOUSE_DOOR_SIDE = [
+  'bottom', // 1
+  'bottom', // 2
+  'bottom', // 3
+  'top',    // 4 - red rect near top in sketch
+  'top',    // 5
+  'top',    // 6  - based on sketch
+  'right',  // 7 - red rect on right side
+  'top',    // 8
+  'left',   // 9 - red rect on left side
+];
+
+// Road intersection points (used for pathfinding)
+// H-road 1 center y = 160
+// H-road 2 center y = 300
+// V-road 1 center x = 160
+// V-road 2 center x = 320
+
+const HROAD1_Y = 160;
+const HROAD2_Y = 300;
+const VROAD1_X = 160;
+const VROAD2_X = 320;
+
+// For each house: the road access point (where you get onto the road network)
+// e.g. house 1 is at cx=69, cy=69, door=bottom → road point is (69, 160)
+// But since there's no vertical road at x=69, we go to nearest intersection or along road
+
+// Actually, let's define road entry points properly:
+// House 1 (col0, row0): exits bottom → goes down to HROAD1 at x=69, then must go right to VROAD1(160,160) or go along road
+// For simplicity: each house has a "road junction" = nearest road intersection
+//   col0 → VROAD1_X = 160 (but house is at x=69, so walks along HROAD to V1)
+//   col1 → on VROAD1 between V1 and V2; nearest is (160 or 320) — center is VROAD1_X
+//   col2 → VROAD2_X = 320
+
+// Let's define house road access nodes:
+// Each house exits onto a horizontal road segment, then can reach vertical roads
+
+// Road node ids: 
+//  H1L  = (69, 160)  [between left edge and VROAD1 on HROAD1]
+//  H1M  = (229, 160) [between VROAD1 and VROAD2 on HROAD1]  
+//  H1R  = (389, 160) [right of VROAD2 on HROAD1]
+//  H2L  = (69, 300)
+//  H2M  = (229, 300)
+//  H2R  = (389, 300)
+//  I1   = (160, 160) intersection
+//  I2   = (320, 160) intersection
+//  I3   = (160, 300) intersection
+//  I4   = (320, 300) intersection
+//  V1T  = (160, 69)  [VROAD1 top segment center]
+//  V2T  = (320, 69)
+//  V1B  = (160, 389)
+//  V2B  = (320, 389)
+
+const ROAD_NODES = {
+  H1L: {x:69,  y:160}, H1M: {x:229, y:160}, H1R: {x:389, y:160},
+  H2L: {x:69,  y:300}, H2M: {x:229, y:300}, H2R: {x:389, y:300},
+  I1:  {x:160, y:160}, I2:  {x:320, y:160},
+  I3:  {x:160, y:300}, I4:  {x:320, y:300},
+  V1T: {x:160, y:69},  V2T: {x:320, y:69},
+  V1B: {x:160, y:389}, V2B: {x:320, y:389},
+};
+
+// House road access: which road node is the "exit onto road" point
+const HOUSE_ROAD_NODE = [
+  'H1L', // 1 → exits bottom, runs along HROAD1 left seg
+  'H1M', // 2 → exits bottom, HROAD1 middle
+  'H1R', // 3 → exits bottom, HROAD1 right
+  'H2L', // 4 → exits top, HROAD2 left (or exits bottom onto HROAD2? top=facing up=HROAD1)
+  'H2M', // 5
+  'H2R', // 6
+  'H2L', // 7 → exits right (from sketch), then onto HROAD2 left segment
+  'H2M', // 8 → exits top onto HROAD2 middle
+  'H2R', // 9 → exits left, onto HROAD2 right
+];
+// Override: house 4 exits top → goes up to HROAD1 left
+const HOUSE_ROAD_NODE_CORRECTED = [
+  'H1L', // 1
+  'H1M', // 2
+  'H1R', // 3
+  'H1L', // 4 (door top → HROAD1 left)  wait col0 row1, door top → y goes up to 160
+  'H1M', // 5 (door top → HROAD1 middle)
+  'H1R', // 6
+  'H2L', // 7 (door right → goes to road then H2L area)
+  'H2M', // 8
+  'H2R', // 9
+];
+
+// =============================================
+// GRAPH (adjacency for road network)
+// =============================================
+// Connections (bidirectional):
+// H1L ↔ I1 (horizontal road 1, left segment)
+// I1  ↔ H1M (horizontal road 1)
+// H1M ↔ I2
+// I2  ↔ H1R
+// H2L ↔ I3
+// I3  ↔ H2M
+// H2M ↔ I4
+// I4  ↔ H2R
+// I1  ↔ I3 (vertical road 1)
+// I2  ↔ I4 (vertical road 2)
+// V1T ↔ I1  V1B ↔ I3
+// V2T ↔ I2  V2B ↔ I4
+// H1L ↔ V1T (conceptually, but let's simplify)
+
+const GRAPH = {
+  H1L: ['I1'],
+  H1M: ['I1','I2'],
+  H1R: ['I2'],
+  H2L: ['I3'],
+  H2M: ['I3','I4'],
+  H2R: ['I4'],
+  I1:  ['H1L','H1M','I2','I3'],
+  I2:  ['H1M','H1R','I1','I4'],
+  I3:  ['H2L','H2M','I1','I4'],
+  I4:  ['H2M','H2R','I2','I3'],
+};
+
+// BFS to find shortest path through road nodes
+function bfsRoadPath(startNode, endNode) {
+  if (startNode === endNode) return [startNode];
+  const visited = new Set([startNode]);
+  const queue = [[startNode]];
+  while (queue.length > 0) {
+    const path = queue.shift();
+    const curr = path[path.length - 1];
+    for (const neighbor of (GRAPH[curr] || [])) {
+      if (!visited.has(neighbor)) {
+        const newPath = [...path, neighbor];
+        if (neighbor === endNode) return newPath;
+        visited.add(neighbor);
+        queue.push(newPath);
+      }
+    }
+  }
+  return null;
+}
+
+// =============================================
+// DIRECTION CALCULATION
+// =============================================
+
+function getDirection(from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0 ? 'east' : 'west';
+  } else {
+    return dy > 0 ? 'south' : 'north';
+  }
+}
+
+function getTurnInstruction(prevDir, nextDir) {
+  const dirs = ['north','east','south','west'];
+  const pi = dirs.indexOf(prevDir);
+  const ni = dirs.indexOf(nextDir);
+  if (pi === -1 || ni === -1 || prevDir === nextDir) return 'straight';
+  const diff = (ni - pi + 4) % 4;
+  if (diff === 1) return 'right';
+  if (diff === 3) return 'left';
+  if (diff === 2) return 'u-turn';
+  return 'straight';
+}
+
+function dirToArrow(dir) {
+  return {north:'↑', south:'↓', east:'→', west:'←', straight:'↑'}[dir] || '•';
+}
+
+function turnToEmoji(turn) {
+  return {
+    'straight': '⬆️',
+    'left': '↰',
+    'right': '↱',
+    'u-turn': '🔄',
+  }[turn] || '➡️';
+}
+
+// =============================================
+// NAVIGATION LOGIC (uses LinkedList for steps)
+// =============================================
+
+let currentSteps = new LinkedList();
+let currentStepIndex = 0;
+let stepsArray = [];
+
+function buildDirections(fromHouse, toHouse) {
+  const fIdx = fromHouse - 1;
+  const tIdx = toHouse - 1;
+
+  const startRoadNode = HOUSE_ROAD_NODE_CORRECTED[fIdx];
+  const endRoadNode   = HOUSE_ROAD_NODE_CORRECTED[tIdx];
+
+  const roadPath = bfsRoadPath(startRoadNode, endRoadNode);
+  if (!roadPath) return null;
+
+  // Full path: house_from → road nodes → house_to
+  // Collect waypoint coordinates
+  const fromCenter = CELL_CENTERS[fIdx];
+  const toCenter   = CELL_CENTERS[tIdx];
+
+  const waypoints = [];
+  // Exit house
+  waypoints.push({id: `house${fromHouse}`, x: fromCenter.cx, y: fromCenter.cy, label: `House ${fromHouse}`});
+  // Road nodes
+  for (const nodeId of roadPath) {
+    const n = ROAD_NODES[nodeId];
+    waypoints.push({id: nodeId, x: n.x, y: n.y, label: nodeId});
+  }
+  // Enter house
+  waypoints.push({id: `house${toHouse}`, x: toCenter.cx, y: toCenter.cy, label: `House ${toHouse}`});
+
+  // Generate steps using LinkedList
+  currentSteps.clear();
+  const doorSide = HOUSE_DOOR_SIDE[fIdx];
+
+  // Step 1: Exit house
+  currentSteps.append({
+    icon: '🚪',
+    text: `<strong>EXIT House ${fromHouse}</strong> through the ${doorSide} door`,
+    waypoint: 0,
+    highlight: null,
+  });
+
+  let prevDir = null;
+  for (let i = 1; i < waypoints.length - 1; i++) {
+    const prev = waypoints[i-1];
+    const curr = waypoints[i];
+    const next = waypoints[i+1];
+
+    const dir = getDirection(prev, curr);
+    const nextDir = getDirection(curr, next);
+    const turn = getTurnInstruction(dir, nextDir);
+
+    if (i === 1) {
+      // First road step — just "go [direction]"
+      const distLabel = getDistLabel(prev, curr);
+      currentSteps.append({
+        icon: dirToArrow(dir),
+        text: `Head <strong>${dir}</strong> onto the road ${distLabel}`,
+        waypoint: i,
+        highlight: [i-1, i],
+      });
+    }
+
+    if (next.id.startsWith('house')) {
+      // Last road step — enter destination
+      const enterSide = HOUSE_DOOR_SIDE[tIdx];
+      const distLabel = getDistLabel(curr, next);
+      currentSteps.append({
+        icon: turnToEmoji(turn),
+        text: `Turn <strong>${turn}</strong> — destination is <strong>${distLabel}</strong> on your <strong>${doorSide_relative(turn, dir)}</strong>`,
+        waypoint: i,
+        highlight: [i, i+1],
+      });
+    } else {
+      const distLabel = getDistLabel(curr, waypoints[i+1] || curr);
+      currentSteps.append({
+        icon: turnToEmoji(turn),
+        text: `At intersection, turn <strong>${turn}</strong>, continue <strong>${nextDir}</strong>`,
+        waypoint: i,
+        highlight: [i, i+1],
+      });
+    }
+    prevDir = dir;
+  }
+
+  // Step: enter destination
+  const enterSide = HOUSE_DOOR_SIDE[tIdx];
+  currentSteps.append({
+    icon: '🏠',
+    text: `<strong>ARRIVE at House ${toHouse}</strong> — enter through the ${enterSide} door`,
+    waypoint: waypoints.length - 1,
+    highlight: null,
+  });
+
+  return { waypoints, roadPath };
+}
+
+function doorSide_relative(turn, approachDir) {
+  // Given approach direction and turn instruction, which side is the door on
+  if (turn === 'straight') return 'front';
+  if (turn === 'left') return 'left';
+  if (turn === 'right') return 'right';
+  return 'side';
+}
+
+function getDistLabel(a, b) {
+  const dx = Math.abs(b.x - a.x);
+  const dy = Math.abs(b.y - a.y);
+  const dist = Math.round(Math.sqrt(dx*dx + dy*dy));
+  return `~${dist}m`;
+}
+
+// =============================================
+// MAP RENDERING
+// =============================================
+
+function drawHouses() {
+  const layer = document.getElementById('houses-layer');
+  layer.innerHTML = '';
+
+  for (let i = 0; i < 9; i++) {
+    const h = i + 1;
+    const { cx, cy } = CELL_CENTERS[i];
+    const door = HOUSE_DOOR_SIDE[i];
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('id', `house-g-${h}`);
+    g.style.cursor = 'pointer';
+
+    // House block background
+    const rect = createSVGEl('rect', {
+      x: cx-38, y: cy-38, width:76, height:76,
+      fill: '#0f1e2e', stroke: '#1a3a5c', 'stroke-width':'1.5', rx:'4'
+    });
+    g.appendChild(rect);
+
+    // Yellow triangle (house)
+    const triPts = `${cx},${cy-24} ${cx-20},${cy+8} ${cx+20},${cy+8}`;
+    const tri = createSVGEl('polygon', {
+      points: triPts, fill: 'none', stroke: '#ffd700', 'stroke-width':'2.5'
+    });
+    g.appendChild(tri);
+
+    // House number
+    const num = createSVGEl('text', {
+      x: cx, y: cy+6,
+      'text-anchor':'middle', fill:'#4488ff',
+      'font-size':'14', 'font-family':'Orbitron, monospace', 'font-weight':'700'
+    });
+    num.textContent = h;
+    g.appendChild(num);
+
+    // Red door rectangle based on door side
+    let dx2, dy2, dw, dh;
+    switch(door) {
+      case 'bottom': dx2=cx-14; dy2=cy+24; dw=28; dh=10; break;
+      case 'top':    dx2=cx-14; dy2=cy-34; dw=28; dh=10; break;
+      case 'left':   dx2=cx-38; dy2=cy-5;  dw=10; dh=20; break;
+      case 'right':  dx2=cx+28; dy2=cy-5;  dw=10; dh=20; break;
+    }
+    const door_rect = createSVGEl('rect', {
+      x:dx2, y:dy2, width:dw, height:dh,
+      fill:'none', stroke:'#ff3b3b', 'stroke-width':'2.5', rx:'2'
+    });
+    g.appendChild(door_rect);
+
+    // House label
+    const lbl = createSVGEl('text', {
+      x: cx, y: cy+52,
+      'text-anchor':'middle', fill:'#2a4060',
+      'font-size':'8', 'font-family':'Share Tech Mono, monospace'
+    });
+    lbl.textContent = `H${h}`;
+    g.appendChild(lbl);
+
+    layer.appendChild(g);
+  }
+}
+
+function createSVGEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function highlightHouses(fromH, toH) {
+  for (let i = 1; i <= 9; i++) {
+    const g = document.getElementById(`house-g-${i}`);
+    if (!g) continue;
+    const rect = g.querySelector('rect');
+    if (i === fromH) {
+      rect.setAttribute('fill', '#0d2a1a');
+      rect.setAttribute('stroke', '#39ff14');
+    } else if (i === toH) {
+      rect.setAttribute('fill', '#1a1a0a');
+      rect.setAttribute('stroke', '#ffd700');
+    } else {
+      rect.setAttribute('fill', '#0f1e2e');
+      rect.setAttribute('stroke', '#1a3a5c');
+    }
+  }
+}
+
+function drawPath(waypoints) {
+  const layer = document.getElementById('path-layer');
+  layer.innerHTML = '';
+  if (!waypoints || waypoints.length < 2) return;
+
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const a = waypoints[i];
+    const b = waypoints[i+1];
+    const line = createSVGEl('line', {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: '#00d4ff', 'stroke-width':'3',
+      'stroke-dasharray': '8,5', opacity:'0.6'
+    });
+    line.setAttribute('class', 'path-animated');
+    layer.appendChild(line);
+
+    // Arrow at midpoint
+    const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+    const angle = Math.atan2(b.y-a.y, b.x-a.x) * 180 / Math.PI;
+    const arrow = createSVGEl('polygon', {
+      points: '-6,-4 6,0 -6,4',
+      fill: '#00d4ff', opacity:'0.8',
+      transform: `translate(${mx},${my}) rotate(${angle})`
+    });
+    layer.appendChild(arrow);
+  }
+
+  // Waypoint dots
+  for (const wp of waypoints) {
+    const dot = createSVGEl('circle', {
+      cx: wp.x, cy: wp.y, r: '4',
+      fill: '#00d4ff', opacity:'0.7'
+    });
+    layer.appendChild(dot);
+  }
+}
+
+function highlightStep(waypoints, highlight) {
+  const layer = document.getElementById('step-highlight');
+  layer.innerHTML = '';
+  if (!highlight || !waypoints) return;
+  for (let i = highlight[0]; i < Math.min(highlight[1]+1, waypoints.length); i++) {
+    const wp = waypoints[i];
+    if (!wp) continue;
+    const circle = createSVGEl('circle', {
+      cx: wp.x, cy: wp.y, r: '10',
+      fill: 'none', stroke: '#39ff14', 'stroke-width':'2', opacity:'0.9'
+    });
+    layer.appendChild(circle);
+    const pulse = createSVGEl('circle', {
+      cx: wp.x, cy: wp.y, r: '6',
+      fill: 'rgba(57,255,20,0.3)', stroke:'none'
+    });
+    layer.appendChild(pulse);
+  }
+}
+
+// =============================================
+// UI
+// =============================================
+
+let navWaypoints = null;
+
+function startNavigation() {
+  const from = parseInt(document.getElementById('sel-from').value);
+  const to   = parseInt(document.getElementById('sel-to').value);
+
+  if (!from || !to) {
+    alert('Please select both origin and destination houses.');
+    return;
+  }
+  if (from === to) {
+    alert('Origin and destination must be different houses.');
+    return;
+  }
+
+  const result = buildDirections(from, to);
+  if (!result) {
+    document.getElementById('route-display').textContent = 'No route found.';
+    return;
+  }
+
+  navWaypoints = result.waypoints;
+  stepsArray = currentSteps.toArray();
+  currentStepIndex = 0;
+
+  // Draw path
+  drawPath(navWaypoints);
+  highlightHouses(from, to);
+
+  // Route info
+  const routeEl = document.getElementById('route-display');
+  routeEl.className = 'has-route';
+  const stops = result.roadPath.length;
+  routeEl.innerHTML = `
+    <span style="color:#39ff14">▶ ROUTE ACTIVE</span><br>
+    House <strong style="color:#ffd700">${from}</strong> → House <strong style="color:#ffd700">${to}</strong><br>
+    Via: ${result.roadPath.join(' → ')}<br>
+    <span style="color:#4a7a9b">Road segments: ${stops} · Steps: ${stepsArray.length}</span>
+  `;
+
+  // Render steps
+  renderSteps();
+  updateActiveStep();
+}
+
+function renderSteps() {
+  const container = document.getElementById('steps-container');
+  container.innerHTML = '';
+  stepsArray.forEach((step, idx) => {
+    const div = document.createElement('div');
+    div.className = 'step' + (idx === 0 ? ' active' : '');
+    div.id = `step-${idx}`;
+    div.onclick = () => jumpToStep(idx);
+    div.innerHTML = `
+      <div class="step-icon">${step.icon}</div>
+      <div class="step-text">${step.text}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function updateActiveStep() {
+  stepsArray.forEach((_, idx) => {
+    const el = document.getElementById(`step-${idx}`);
+    if (!el) return;
+    el.className = 'step' + (idx === currentStepIndex ? ' active' : idx < currentStepIndex ? ' done' : '');
+  });
+  // Scroll active into view
+  const active = document.getElementById(`step-${currentStepIndex}`);
+  if (active) active.scrollIntoView({block:'nearest',behavior:'smooth'});
+  // Highlight on map
+  if (navWaypoints && stepsArray[currentStepIndex]) {
+    highlightStep(navWaypoints, stepsArray[currentStepIndex].highlight);
+  }
+}
+
+function jumpToStep(idx) {
+  currentStepIndex = idx;
+  updateActiveStep();
+}
+
+function nextStep() {
+  if (currentStepIndex < stepsArray.length - 1) {
+    currentStepIndex++;
+    updateActiveStep();
+  }
+}
+
+function prevStep() {
+  if (currentStepIndex > 0) {
+    currentStepIndex--;
+    updateActiveStep();
+  }
+}
+
+// =============================================
+// INIT
+// =============================================
+drawHouses();
+</script>
+</body>
+</html>
